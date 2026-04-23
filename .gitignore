@@ -1,3 +1,7 @@
 node_modules/
 *.log
 .DS_Store
+
+# Brainstorm summaries are generated locally
+brainstorms/*
+!brainstorms/.gitkeep

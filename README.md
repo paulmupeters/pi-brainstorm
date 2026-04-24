@@ -39,6 +39,7 @@ pi --no-extensions -e /home/paul/projects/pi-brainstorm/extensions/brainstorm.ts
 ### Use from your normal pi setup
 
 Either:
+- install from npm with `pi install npm:@paulmupeters/pi-brainstorm`
 - copy or symlink `extensions/brainstorm.ts` into `~/.pi/agent/extensions/`
 - or add the file path to your pi extension settings
 

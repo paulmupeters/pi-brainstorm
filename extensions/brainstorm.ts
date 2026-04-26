@@ -44,7 +44,7 @@ type SummaryModelPreference = {
 type PiModel = NonNullable<ExtensionContext["model"]>;
 
 const DEFAULT_TOOLS = ["read", "bash", "edit", "write"];
-const BRAINSTORM_TOOLS: string[] = [];
+const BRAINSTORM_TOOLS = ["read"];
 const BRAINSTORM_ENTRY_TYPE = "brainstorm-state";
 const DEFAULT_TOPIC = "brainstorm";
 const BRAINSTORM_SETTINGS_KEY = "piBrainstorm";
@@ -411,7 +411,7 @@ const setBrainstormUi = (
 		ctx.ui.theme.fg("accent", ctx.ui.theme.bold("🧠 Brainstorm mode active")),
 		state.topic ? `${ctx.ui.theme.fg("dim", "topic:")} ${state.topic}` : ctx.ui.theme.fg("dim", "topic: general"),
 		`${ctx.ui.theme.fg("dim", "summary:")} ${getSummaryModelLabel(summaryModelPreference)}`,
-		ctx.ui.theme.fg("dim", "conversation only • tools blocked • no file edits"),
+		ctx.ui.theme.fg("dim", "read-only • file edits and shell commands blocked"),
 		ctx.ui.theme.fg(
 			"dim",
 			`finish: /brainstorm   cancel: /brainstorm cancel   summary model: /${SUMMARY_MODEL_COMMAND}   shortcut: Ctrl+Alt+B`,
@@ -965,7 +965,7 @@ export default function brainstormExtension(pi: ExtensionAPI) {
 	};
 
 	pi.registerCommand("brainstorm", {
-		description: "Start or finish conversation-only brainstorm mode",
+		description: "Start or finish read-only brainstorm mode",
 		handler: handleBrainstormCommand,
 	});
 
@@ -975,7 +975,7 @@ export default function brainstormExtension(pi: ExtensionAPI) {
 	});
 
 	pi.registerShortcut(Key.ctrlAlt("b"), {
-		description: "Start or finish brainstorm mode",
+		description: "Start or finish read-only brainstorm mode",
 		handler: async (ctx) => {
 			await handleBrainstormCommand("", ctx);
 		},
@@ -988,7 +988,7 @@ export default function brainstormExtension(pi: ExtensionAPI) {
 
 		const topicLine = state.topic ? `Current topic: ${state.topic}` : undefined;
 		return {
-			systemPrompt: `${event.systemPrompt}\n\nYou are in brainstorm mode. This is a conversation-only ideation session.\n\nRules:\n- Answer the user's questions directly.\n- Help compare ideas, sharpen tradeoffs, and refine thinking.\n- Do not suggest implementation steps, code changes, tasks, or action plans unless the user explicitly asks for them.\n- Do not volunteer to edit files, write code, or create plans.\n- If the user asks for the best option, choose one and explain why.\n- Avoid empty neutrality. Do not stop at \"it depends\"; still make a recommendation when the user wants one.\n- Be engaged and opinionated, but not pushy.\n- Keep answers concise unless the user asks for depth.\n- Do not use tools in brainstorm mode.\n${topicLine ? `- ${topicLine}` : ""}`,
+			systemPrompt: `${event.systemPrompt}\n\nYou are in brainstorm mode. This is a read-only ideation session.\n\nRules:\n- Answer the user's questions directly.\n- Help compare ideas, sharpen tradeoffs, and refine thinking.\n- Do not suggest implementation steps, code changes, tasks, or action plans unless the user explicitly asks for them.\n- Do not volunteer to edit files, write code, or create plans.\n- If the user asks for the best option, choose one and explain why.\n- Avoid empty neutrality. Do not stop at \"it depends\"; still make a recommendation when the user wants one.\n- Be engaged and opinionated, but not pushy.\n- Keep answers concise unless the user asks for depth.\n- You may use the read tool when the user asks about an existing file or referenced context.\n- Do not use any tools other than read in brainstorm mode.\n${topicLine ? `- ${topicLine}` : ""}`,
 		};
 	});
 
@@ -1001,14 +1001,18 @@ export default function brainstormExtension(pi: ExtensionAPI) {
 		return { messages };
 	});
 
-	pi.on("tool_call", async () => {
+	pi.on("tool_call", async (event) => {
 		if (!state.active) {
+			return;
+		}
+
+		if (event.toolName === "read") {
 			return;
 		}
 
 		return {
 			block: true,
-			reason: "Brainstorm mode is conversation-only. Tools are disabled until you finish or cancel /brainstorm.",
+			reason: "Brainstorm mode is read-only. Only the read tool is allowed until you finish or cancel /brainstorm.",
 		};
 	});
 

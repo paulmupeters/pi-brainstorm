@@ -1,12 +1,12 @@
 # pi-brainstorm
 
-A small pi extension that adds a conversation-only `/brainstorm` mode.
+A small pi extension that adds a read-only `/brainstorm` mode.
 
 ## What it does
 
 When brainstorm mode is active:
-- blocks all tool calls
-- prevents file edits/writes
+- allows only the `read` tool
+- blocks shell commands and file edits/writes
 - keeps the conversation exploratory
 - avoids unsolicited "you should do X next" suggestions
 - gives a clear recommendation when you ask for the best option
@@ -85,6 +85,6 @@ If you choose **Summary to context** or **Summary to markdown and context**, the
 
 ## Notes
 
-- During brainstorm mode, tools are disabled on purpose.
+- During brainstorm mode, only the `read` tool is enabled on purpose.
 - The extension restores your previously active tools after finishing/canceling.
 - If model-based summarization is unavailable, the extension falls back to a simple markdown transcript.

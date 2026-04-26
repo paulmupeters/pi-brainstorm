@@ -11,8 +11,8 @@ When brainstorm mode is active:
 - avoids unsolicited "you should do X next" suggestions
 - gives a clear recommendation when you ask for the best option
 - shows a visible reminder in the UI
-- offers to save a markdown summary when you finish
-- can replace the brainstorm transcript with the reviewed summary in LLM context when you finish without saving or when you save and choose the context-preserving option
+- drafts a decision-oriented markdown brief when you finish
+- can replace the brainstorm transcript with the reviewed brief in LLM context when you finish without saving or when you save and choose the context-preserving option
 
 ## UX
 
@@ -43,18 +43,20 @@ Either:
 - copy or symlink `extensions/brainstorm.ts` into `~/.pi/agent/extensions/`
 - or add the file path to your pi extension settings
 
-## Summary export
+## Brief export
 
 When you finish a brainstorm, the extension:
 1. collects the conversation since brainstorm mode started
-2. asks the current model, or an optional dedicated summary-model override, to draft a markdown summary
-3. opens that summary in an editor so you can tweak it
+2. asks the current model, or an optional dedicated summary-model override, to draft a concise decision brief
+3. opens that brief in an editor so you can tweak it
 4. then offers:
-   - `Summary to context`
-   - `Summary to markdown`
-   - `Summary to markdown and context`
+   - `Brief to context`
+   - `Brief to markdown`
+   - `Brief to markdown and context`
    - `Continue brainstorming`
    - `Exit`
+
+The generated brief uses `# Decision Brief: <topic>` when the session reached a clear decision, recommendation, or strong preference. If no firm conclusion emerged, it uses `# Brainstorm Brief: <topic>` and calls out the strongest current leaning without inventing certainty. It leads with the recommendation/current leaning, then covers rationale, alternatives, risks/open questions, and a transcript summary capped at 5 sentences.
 
 Default save path:
 
@@ -81,10 +83,10 @@ Or set it directly:
 
 The preference is stored globally in `~/.pi/agent/settings.json` under `piBrainstorm.summaryModel` and falls back to the active model when unset or unavailable.
 
-If you choose **Summary to context** or **Summary to markdown and context**, the brainstorm transcript stays in session history, but future LLM context uses the reviewed summary instead of the full brainstorm exchange.
+If you choose **Brief to context** or **Brief to markdown and context**, the brainstorm transcript stays in session history, but future LLM context uses the reviewed brief instead of the full brainstorm exchange.
 
 ## Notes
 
 - During brainstorm mode, only the `read` tool is enabled on purpose.
 - The extension restores your previously active tools after finishing/canceling.
-- If model-based summarization is unavailable, the extension falls back to a simple markdown transcript.
+- If model-based brief generation is unavailable, the extension falls back to a simple markdown transcript.

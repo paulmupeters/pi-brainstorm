@@ -51,30 +51,33 @@ const BRAINSTORM_SETTINGS_KEY = "piBrainstorm";
 const SUMMARY_MODEL_SETTING_KEY = "summaryModel";
 const SUMMARY_MODEL_COMMAND = "brainstorm-summary-model";
 const SUMMARY_MODEL_CLEAR_ARGS = new Set(["active", "clear", "default", "unset"]);
-const SUMMARY_TO_CONTEXT_OPTION = "Summary to context";
-const SUMMARY_TO_MARKDOWN_OPTION = "Summary to markdown";
-const SUMMARY_TO_MARKDOWN_AND_CONTEXT_OPTION = "Summary to markdown and context";
+const SUMMARY_TO_CONTEXT_OPTION = "Brief to context";
+const SUMMARY_TO_MARKDOWN_OPTION = "Brief to markdown";
+const SUMMARY_TO_MARKDOWN_AND_CONTEXT_OPTION = "Brief to markdown and context";
 const CONTINUE_BRAINSTORMING_OPTION = "Continue brainstorming";
 const EXIT_OPTION = "Exit";
 const BRAINSTORM_CONTEXT_SUMMARY_CUSTOM_TYPE = "brainstorm-context-summary";
 const BRAINSTORM_CONTEXT_SUMMARY_PREFIX =
-	"A previous brainstorm transcript was replaced with the following summary:\n\n<summary>\n";
-const BRAINSTORM_CONTEXT_SUMMARY_SUFFIX = "\n</summary>";
+	"A previous brainstorm transcript was replaced with the following brief:\n\n<brief>\n";
+const BRAINSTORM_CONTEXT_SUMMARY_SUFFIX = "\n</brief>";
 
-const SUMMARY_SYSTEM_PROMPT = `You are writing a markdown summary of a brainstorming conversation.
+const SUMMARY_SYSTEM_PROMPT = `You are writing the default end-of-session artifact for a brainstorming conversation.
 
-Write a concise but useful summary that helps someone resume or review the discussion later.
+Produce a concise, decision-oriented markdown brief, not a chronological transcript recap.
 
 Requirements:
 - Output valid markdown only.
-- Start with a level-1 heading.
-- Capture the user's real goal or topic.
-- Include the strongest recommendations or preferences that emerged.
-- If options were compared, say which option was preferred and why.
-- Include open questions, risks, and unresolved tradeoffs.
+- Start with exactly one level-1 heading:
+  - Use "# Decision Brief: <topic>" when the session reached a clear decision, recommendation, or strong preference.
+  - Use "# Brainstorm Brief: <topic>" when no firm decision emerged.
+- Lead with "## Recommendation" or "## Current leaning".
+- State when there was no firm decision; do not invent certainty.
+- Include rationale for the recommendation or current leaning.
+- Include alternatives considered and why they were not preferred.
+- Include risks, open questions, and unresolved tradeoffs.
+- Include "## Transcript Summary" as a very short recap capped at 5 sentences.
 - Include next steps only if the user explicitly asked for next steps.
-- Do not invent decisions that were not actually made.
-- Keep it crisp and skimmable.`;
+- Keep it crisp, skimmable, and useful as a decision record.`;
 
 const inactiveState = (): BrainstormState => ({
 	active: false,
@@ -193,12 +196,15 @@ const buildSummaryPrompt = (state: BrainstormState, conversationText: string): s
 	const startedLine = state.startedAt ? `Started: ${new Date(state.startedAt).toISOString()}` : undefined;
 
 	return [
-		"Summarize this brainstorming session.",
+		"Create the default end-of-session decision brief for this brainstorming session.",
 		topicLine,
 		startedLine,
 		"",
-		"Produce a helpful markdown summary that preserves recommendations, preferences, tradeoffs, open questions, and any conclusions reached.",
-		"Only include action items if the user explicitly asked for actions or next steps.",
+		"The brief should prioritize what was decided, recommended, or clarified over the order of discussion.",
+		"If there is a clear recommendation or strong preference, title it as a Decision Brief and lead with that recommendation.",
+		"If there is no firm decision, title it as a Brainstorm Brief and explicitly describe the strongest current leaning without overstating certainty.",
+		"Only include action items or next steps if the user explicitly asked for them.",
+		"Keep the Transcript Summary section to 5 sentences or fewer.",
 		"",
 		"<conversation>",
 		conversationText,
@@ -209,16 +215,20 @@ const buildSummaryPrompt = (state: BrainstormState, conversationText: string): s
 };
 
 const buildFallbackSummary = (state: BrainstormState, conversationText: string): string => {
-	const title = state.topic ? `# Brainstorm Summary: ${state.topic}` : "# Brainstorm Summary";
+	const title = state.topic ? `# Brainstorm Brief: ${state.topic}` : "# Brainstorm Brief";
 	const lines = [
 		title,
 		"",
 		`- Date: ${formatDate(state.startedAt ?? Date.now())}`,
 		`- Topic: ${state.topic ?? "General brainstorming"}`,
 		"",
-		"## Notes",
+		"## Current leaning",
 		"",
-		"Model-based summarization was unavailable, so the conversation transcript is included below.",
+		"Model-based summarization was unavailable, so no decision-oriented brief could be generated automatically.",
+		"",
+		"## Transcript Summary",
+		"",
+		"The full brainstorm transcript is included below because automatic brief generation was unavailable.",
 		"",
 		"## Transcript",
 		"",
@@ -600,7 +610,7 @@ const generateSummary = async (
 
 const saveSummaryToFile = async (summary: string, state: BrainstormState, ctx: ExtensionCommandContext): Promise<string | null> => {
 	const suggestedPath = defaultSummaryPath(state);
-	const chosenPath = await ctx.ui.input("Save brainstorm summary", suggestedPath);
+	const chosenPath = await ctx.ui.input("Save brainstorm brief", suggestedPath);
 	if (chosenPath === undefined) {
 		return null;
 	}
@@ -742,7 +752,7 @@ export default function brainstormExtension(pi: ExtensionAPI) {
 			return;
 		}
 
-		const reviewedSummary = await ctx.ui.editor("Review brainstorm summary", summary);
+		const reviewedSummary = await ctx.ui.editor("Review brainstorm brief", summary);
 		if (reviewedSummary === undefined) {
 			notify(ctx, "Finish cancelled. Brainstorm mode is still active.", "info");
 			return;
@@ -769,7 +779,7 @@ export default function brainstormExtension(pi: ExtensionAPI) {
 
 		if (nextAction === SUMMARY_TO_CONTEXT_OPTION) {
 			stopBrainstorm("finish", ctx, { summary: reviewedSummary, summaryInContext: true });
-			notify(ctx, "Brainstorm finished. Transcript replaced by the reviewed summary in context.", "info");
+			notify(ctx, "Brainstorm finished. Transcript replaced by the reviewed brief in context.", "info");
 			return;
 		}
 
@@ -781,12 +791,12 @@ export default function brainstormExtension(pi: ExtensionAPI) {
 
 		if (nextAction === SUMMARY_TO_MARKDOWN_AND_CONTEXT_OPTION) {
 			stopBrainstorm("finish", ctx, { savedPath, summary: reviewedSummary, summaryInContext: true });
-			notify(ctx, `Brainstorm summary saved to ${savedPath}. Transcript replaced by the reviewed summary in context.`, "info");
+			notify(ctx, `Brainstorm brief saved to ${savedPath}. Transcript replaced by the reviewed brief in context.`, "info");
 			return;
 		}
 
 		stopBrainstorm("finish", ctx, { savedPath });
-		notify(ctx, `Brainstorm summary saved to ${savedPath}`, "info");
+		notify(ctx, `Brainstorm brief saved to ${savedPath}`, "info");
 	};
 
 	const openBrainstormMenu = async (ctx: ExtensionCommandContext) => {

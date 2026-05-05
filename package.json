@@ -1,6 +1,6 @@
 {
   "name": "@paulmupeters/pi-brainstorm",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A conversation-only brainstorm mode extension for pi",
   "license": "MIT",
   "keywords": ["pi-package"],

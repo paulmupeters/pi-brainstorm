@@ -610,7 +610,10 @@ const generateSummary = async (
 
 const saveSummaryToFile = async (summary: string, state: BrainstormState, ctx: ExtensionCommandContext): Promise<string | null> => {
 	const suggestedPath = defaultSummaryPath(state);
-	const chosenPath = await ctx.ui.input("Save brainstorm brief", suggestedPath);
+	const chosenPath = await ctx.ui.input(
+		`Save brainstorm brief — press Enter to store at ${suggestedPath}`,
+		"Type a different path, or leave blank for the default",
+	);
 	if (chosenPath === undefined) {
 		return null;
 	}
